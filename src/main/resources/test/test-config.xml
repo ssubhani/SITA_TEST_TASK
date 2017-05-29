@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:int="http://www.springframework.org/schema/integration"
+    xmlns:file="http://www.springframework.org/schema/integration/file"
+    xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd
+            http://www.springframework.org/schema/integration/file
+            http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
+            http://www.springframework.org/schema/context 
+            http://www.springframework.org/schema/context/spring-context.xsd">
+ 
+
+    <context:property-placeholder/>
+ 
+    <file:inbound-channel-adapter id="filesIn"
+        directory="file:src/test/resources/IN" filter="onlyTextFiles"
+        auto-startup="true">
+        <int:poller id="poller" fixed-delay="10" />
+    </file:inbound-channel-adapter>
+    
+    
+    <bean id="onlyTextFiles"
+        class="org.springframework.integration.file.config.FileListFilterFactoryBean"
+        p:filenamePattern="*.txt" />
+        
+    <file:file-to-string-transformer input-channel="filesIn" output-channel="output" charset="UTF-8"/>       
+	
+	<int:channel id="filesIn"/>
+	
+     <int:router input-channel="output" ref="router" method="handleFile"/>
+        
+     <bean id="router" class="aero.sita.asl.testTasks.SpringIntegrationTask.handlers.InputFileRouter">
+    </bean>
+    
+   <int:service-activator input-channel="outputChannel"
+		ref="messageProcesser" method="processMessage" output-channel="writeOutputChannel" />
+		
+		<bean id="messageProcesser" class="aero.sita.asl.testTasks.SpringIntegrationTask.handlers.MessageProcessor">
+    </bean>
+    
+    <file:outbound-channel-adapter id="writeOutputChannel"
+        directory="file:src/test/resources/OUT" auto-create-directory="true" filename-generator="fileNameGenerator"/>
+     <bean id="fileNameGenerator" class="aero.sita.asl.testTasks.SpringIntegrationTask.handlers.ProcessedFileNameGenerator" ></bean>   
+    
+     <file:outbound-channel-adapter id="problemChannel"  directory="file:src/test/resources/ERROR" auto-create-directory="true" />
+</beans>
